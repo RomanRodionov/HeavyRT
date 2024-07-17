@@ -1,0 +1,347 @@
+#ifndef HYDRAXML_H
+#define HYDRAXML_H
+
+#include "pugixml.hpp"
+#include "LiteMath.h"
+using namespace LiteMath;
+
+#include "Image2d.h"
+using LiteImage::Image2D;
+using LiteImage::Sampler;
+using LiteImage::ICombinedImageSampler;
+
+#include <vector>
+#include <string>
+#include <sstream>
+#include <set>
+#include <unordered_map>
+//#include <iostream>
+
+#if defined(__ANDROID__)
+#include <android/asset_manager.h>
+#include <android/log.h>
+#endif
+
+namespace hydra_xml
+{
+  std::wstring s2ws(const std::string& str);
+  std::string  ws2s(const std::wstring& wstr);
+  LiteMath::float4x4 float4x4FromString(const std::wstring &matrix_str);
+  LiteMath::float3   read3f(pugi::xml_attribute a_attr);
+  LiteMath::float3   read3f(pugi::xml_node a_node);
+  LiteMath::float3   readval3f(pugi::xml_node a_node);
+  float              readval1f(pugi::xml_node a_color);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+  struct Instance
+  {
+    uint32_t           geomId = uint32_t(-1); ///< geom id
+    uint32_t           rmapId = uint32_t(-1); ///< remap list id, todo: add function to get real remap list by id
+    LiteMath::float4x4 matrix;                ///< transform matrix
+    pugi::xml_node     node;
+  };
+
+  struct LightInstance
+  {
+    uint32_t           instId  = uint32_t(-1);
+    uint32_t           lightId = uint32_t(-1);
+    pugi::xml_node     instNode;
+    pugi::xml_node     lightNode;
+    LiteMath::float4x4 matrix;
+    pugi::xml_node     node;
+  };
+
+  struct Camera
+  {
+    float pos[3];
+    float lookAt[3];
+    float up[3];
+    float fov;
+    float nearPlane;
+    float farPlane;
+    pugi::xml_node     node;
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class LocIterator //
+	{
+	  friend class pugi::xml_node;
+    friend class pugi::xml_node_iterator;
+  
+	public:
+  
+		// Default constructor
+		LocIterator() : m_libraryRootDir("") {}
+		LocIterator(const pugi::xml_node_iterator& a_iter, const std::string& a_str) : m_iter(a_iter), m_libraryRootDir(a_str) {}
+  
+		// Iterator operators
+		bool operator==(const LocIterator& rhs) const { return m_iter == rhs.m_iter;}
+		bool operator!=(const LocIterator& rhs) const { return (m_iter != rhs.m_iter); }
+  
+    std::string operator*() const 
+    { 
+      auto attr    = m_iter->attribute(L"loc");
+      auto meshLoc = ws2s(std::wstring(attr.as_string()));
+      return m_libraryRootDir + "/" + meshLoc;
+    }
+  
+		const LocIterator& operator++() { ++m_iter; return *this; }
+		LocIterator operator++(int)     { m_iter++; return *this; }
+  
+		const LocIterator& operator--() { --m_iter; return *this; }
+		LocIterator operator--(int)     { m_iter--; return *this; }
+  
+  private:
+    pugi::xml_node_iterator m_iter;
+    std::string m_libraryRootDir;
+	};
+
+  class InstIterator //
+	{
+	  friend class pugi::xml_node;
+    friend class pugi::xml_node_iterator;
+  
+	public:
+  
+		// Default constructor
+		InstIterator() {}
+		InstIterator(const pugi::xml_node_iterator& a_iter, const pugi::xml_node_iterator& a_end) : m_iter(a_iter), m_end(a_end) {}
+  
+		// Iterator operators
+		bool operator==(const InstIterator& rhs) const { return m_iter == rhs.m_iter;}
+		bool operator!=(const InstIterator& rhs) const { return (m_iter != rhs.m_iter); }
+  
+    Instance operator*() const 
+    { 
+      Instance inst;
+      inst.geomId = m_iter->attribute(L"mesh_id").as_uint();
+      inst.rmapId = m_iter->attribute(L"rmap_id").as_uint();
+      inst.matrix = float4x4FromString(m_iter->attribute(L"matrix").as_string());
+      inst.node   = (*m_iter);
+      return inst;
+    }
+  
+		const InstIterator& operator++() { do ++m_iter; while(m_iter != m_end && std::wstring(m_iter->name()) != L"instance"); return *this; }
+		InstIterator operator++(int)     { do m_iter++; while(m_iter != m_end && std::wstring(m_iter->name()) != L"instance"); return *this; }
+  
+		const InstIterator& operator--() { do --m_iter; while(m_iter != m_end && std::wstring(m_iter->name()) != L"instance"); return *this; }
+		InstIterator operator--(int)     { do m_iter--; while(m_iter != m_end && std::wstring(m_iter->name()) != L"instance"); return *this; }
+  
+  private:
+    pugi::xml_node_iterator m_iter;
+    pugi::xml_node_iterator m_end;
+	};
+
+  class CamIterator //
+	{
+	  friend class pugi::xml_node;
+    friend class pugi::xml_node_iterator;
+  
+	public:
+  
+		// Default constructor
+		CamIterator() {}
+		CamIterator(const pugi::xml_node_iterator& a_iter) : m_iter(a_iter) {}
+  
+		// Iterator operators
+		bool operator==(const CamIterator& rhs) const { return m_iter == rhs.m_iter;}
+		bool operator!=(const CamIterator& rhs) const { return (m_iter != rhs.m_iter); }
+  
+    Camera operator*() const 
+    { 
+      Camera cam;
+      cam.fov       = m_iter->child(L"fov").text().as_float(); 
+      cam.nearPlane = m_iter->child(L"nearClipPlane").text().as_float();
+      cam.farPlane  = m_iter->child(L"farClipPlane").text().as_float();  
+      
+      LiteMath::float3 pos    = hydra_xml::read3f(m_iter->child(L"position"));
+      LiteMath::float3 lookAt = hydra_xml::read3f(m_iter->child(L"look_at"));
+      LiteMath::float3 up     = hydra_xml::read3f(m_iter->child(L"up"));
+      for(int i=0;i<3;i++)
+      {
+        cam.pos   [i] = pos[i];
+        cam.lookAt[i] = lookAt[i];
+        cam.up    [i] = up[i];
+      }
+      cam.node = (*m_iter);
+      return cam;
+    }
+  
+		const CamIterator& operator++() { ++m_iter; return *this; }
+		CamIterator operator++(int)     { m_iter++; return *this; }
+  
+		const CamIterator& operator--() { --m_iter; return *this; }
+		CamIterator operator--(int)     { m_iter--; return *this; }
+  
+  private:
+    pugi::xml_node_iterator m_iter;
+	};
+
+  class RemapListIterator //
+	{
+	  friend class pugi::xml_node;
+    friend class pugi::xml_node_iterator;
+  
+	public:
+  
+		// Default constructor
+		RemapListIterator() {}
+		RemapListIterator(const pugi::xml_node_iterator& a_iter) : m_iter(a_iter) {}
+  
+		// Iterator operators
+		bool operator==(const RemapListIterator& rhs) const { return m_iter == rhs.m_iter;}
+		bool operator!=(const RemapListIterator& rhs) const { return (m_iter != rhs.m_iter); }
+  
+    std::vector<int32_t> operator*() const 
+    { 
+      int size = m_iter->attribute(L"size").as_int();
+      std::vector<int32_t> remapList(size); 
+      std::string strData = ws2s(m_iter->attribute(L"val").as_string());
+      std::stringstream strIn(strData.data());
+      for(int i=0;i<size;i++)
+        strIn >> remapList[i]; 
+      return remapList;
+    }
+  
+		const RemapListIterator& operator++() { ++m_iter; return *this; }
+		RemapListIterator operator++(int)     { m_iter++; return *this; }
+  
+		const RemapListIterator& operator--() { --m_iter; return *this; }
+		RemapListIterator operator--(int)     { m_iter--; return *this; }
+  
+  private:
+    pugi::xml_node_iterator m_iter;
+	};
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  struct HydraScene
+  {
+  public:
+    HydraScene() = default;
+    ~HydraScene() = default;  
+    
+    #if defined(__ANDROID__)
+    int LoadState(AAssetManager* mgr, const std::string &path);
+    #else
+    int LoadState(const std::string &path);
+    #endif  
+
+    //// use this functions with C++11 range for 
+    //
+    pugi::xml_object_range<pugi::xml_node_iterator> TextureNodes()  { return m_texturesLib.children();  } 
+    pugi::xml_object_range<pugi::xml_node_iterator> MaterialNodes() { return m_materialsLib.children(); }
+    pugi::xml_object_range<pugi::xml_node_iterator> GeomNodes()     { return m_geometryLib.children();  }
+    pugi::xml_object_range<pugi::xml_node_iterator> LightNodes()    { return m_lightsLib.children();    }
+    pugi::xml_object_range<pugi::xml_node_iterator> CameraNodes()   { return m_cameraLib.children();    }
+    
+    //// please also use this functions with C++11 range for
+    //
+    pugi::xml_object_range<LocIterator> MeshFiles()    { return pugi::xml_object_range(LocIterator(m_geometryLib.begin(), m_libraryRootDir), 
+                                                                                       LocIterator(m_geometryLib.end(), m_libraryRootDir)
+                                                                                       ); }
+
+    pugi::xml_object_range<LocIterator> TextureFiles() { return pugi::xml_object_range(LocIterator(m_texturesLib.begin(), m_libraryRootDir), 
+                                                                                       LocIterator(m_texturesLib.end(), m_libraryRootDir)
+                                                                                       ); }
+
+    pugi::xml_object_range<InstIterator> InstancesGeom() { return pugi::xml_object_range(InstIterator(m_scenesNode.child(L"scene").child(L"instance"), m_scenesNode.child(L"scene").end()), 
+                                                                                         InstIterator(m_scenesNode.child(L"scene").end(), m_scenesNode.child(L"scene").end())
+                                                                                         ); }
+    
+    std::vector<LightInstance> InstancesLights(uint32_t a_sceneId = 0);
+
+    pugi::xml_object_range<RemapListIterator> RemapLists()  { return pugi::xml_object_range(RemapListIterator(m_scenesNode.child(L"scene").child(L"remap_lists").begin()), 
+                                                                                            RemapListIterator(m_scenesNode.child(L"scene").child(L"remap_lists").end())
+                                                                                            ); }
+
+    pugi::xml_object_range<CamIterator> Cameras() { return pugi::xml_object_range(CamIterator(m_cameraLib.begin()), 
+                                                                                  CamIterator(m_cameraLib.end())); }
+
+    std::vector<LiteMath::float4x4> GetAllInstancesOfMeshLoc(const std::string& a_loc) const 
+    { 
+      auto pFound = m_instancesPerMeshLoc.find(a_loc);
+      if(pFound == m_instancesPerMeshLoc.end())
+        return std::vector<LiteMath::float4x4>();
+      else
+        return pFound->second; 
+    }
+    
+  private:
+    void parseInstancedMeshes(pugi::xml_node a_scenelib, pugi::xml_node a_geomlib);
+    void LogError(const std::string &msg);  
+    
+    std::set<std::string> unique_meshes;
+    std::string        m_libraryRootDir;
+    pugi::xml_node     m_texturesLib; 
+    pugi::xml_node     m_materialsLib; 
+    pugi::xml_node     m_geometryLib; 
+    pugi::xml_node     m_lightsLib;
+    pugi::xml_node     m_cameraLib; 
+    pugi::xml_node     m_settingsNode; 
+    pugi::xml_node     m_scenesNode; 
+    pugi::xml_document m_xmlDoc;
+
+    std::unordered_map<std::string, std::vector<LiteMath::float4x4> > m_instancesPerMeshLoc;
+  };
+
+  struct TextureInfo
+  {
+    std::wstring path;   ///< path to file with texture data
+    uint32_t     width;  ///< assumed texture width
+    uint32_t     height; ///< assumed texture height
+    uint32_t     bpp;    ///< assumed texture bytes per pixel, we support 4 (LDR) or 16 (HDR) during loading; Note that HDR texture could be compressed to 8 bytes (half4) on GPU.
+  };
+
+  struct HydraSampler
+  {
+    float4    row0       = float4(1,0,0,0);
+    float4    row1       = float4(0,1,0,0);
+    float     inputGamma = 2.2f;
+    bool      alphaFromRGB = true;
+
+    uint32_t  texId = 0;
+    Sampler   sampler;
+
+    bool operator==(const HydraSampler& a_rhs) const
+    {
+      const bool addrAreSame     = (sampler.addressU == a_rhs.sampler.addressU) && (sampler.addressV == a_rhs.sampler.addressV) && (sampler.addressW == a_rhs.sampler.addressW);
+      const bool filtersAreSame  = (sampler.filter == a_rhs.sampler.filter);
+      const bool hasBorderSam    = (sampler.addressU == Sampler::AddressMode::BORDER || sampler.addressV == Sampler::AddressMode::BORDER || sampler.addressW == Sampler::AddressMode::BORDER);
+      const bool sameBorderColor = (length3f(sampler.borderColor - a_rhs.sampler.borderColor) < 1e-5f);
+      const bool sameTexId       = (texId == a_rhs.texId);
+      return (addrAreSame && filtersAreSame) && (!hasBorderSam || sameBorderColor) && sameTexId;
+    }
+  };
+
+  class HydraSamplerHash
+  {
+  public:
+    size_t operator()(const HydraSampler& sam) const
+    {
+      const size_t addressMode1 = size_t(sam.sampler.addressU);
+      const size_t addressMode2 = size_t(sam.sampler.addressV) << 4;
+      const size_t addressMode3 = size_t(sam.sampler.addressW) << 8;
+      const size_t filterMode   = size_t(sam.sampler.filter)   << 12;
+      return addressMode1 | addressMode2 | addressMode3 | filterMode | (size_t(sam.texId) << 16);
+    }
+  };
+
+  std::shared_ptr<ICombinedImageSampler> MakeWhiteDummy();
+  #if defined(__ANDROID__)
+  std::shared_ptr<ICombinedImageSampler> LoadTextureAndMakeCombined(AAssetManager* mgr, const TextureInfo& a_texInfo, const Sampler& a_sampler);
+  #else
+  std::shared_ptr<ICombinedImageSampler> LoadTextureAndMakeCombined(const TextureInfo& a_texInfo, const Sampler& a_sampler);
+  #endif
+  HydraSampler ReadSamplerFromColorNode(const pugi::xml_node& a_colorNodes);
+}
+
+#endif //HYDRAXML_H

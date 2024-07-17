@@ -1,0 +1,74 @@
+{
+    // Используйте IntelliSense, чтобы узнать о возможных атрибутах.
+    // Наведите указатель мыши, чтобы просмотреть описания существующих атрибутов.
+    // Для получения дополнительной информации посетите: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+
+        {
+            "name"   : "Helix(BVH2Common_CPU)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/render_app",
+            "args"   : ["-mesh", "scenes/meshes/helix_mid.vsgf", 
+                        //"-render", "ao", "-aoraylen", "0.1", "-aoraynum", "4", "-width", "512", "-height", "512",
+                        "-accel", "BVH2Common", "-build", "cbvh_embree2", "-layout", "DepthFirst", "-out", "y00_helix_cpu.bmp"], 
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+
+        {
+            "name"   : "Dragon(BVH2_STAS_СPU)",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/render_app",
+            "args"   : ["-scene", "scenes/03_dragon/dragon.xml", 
+                        "-accel", "BVH2CommonRTStacklessLBVH", "-build", "cbvh_embree2", "-gpu", "0", "-out", "y03_dragon_cpu.bmp"], 
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+
+        {
+            "name"   : "InstObjects(BVH2Common[fast_build])",
+            "type"   : "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/render_app",
+            "args"   : ["-scene", "scenes/01_simple_scenes/instanced_objects.xml", //"-width", "512", "-height", "512",
+                        "-accel", "BVH2Common", "-build", "cbvh_lbvh", "-layout", "DepthFirst", "-out", "y04_ints_objs1.bmp"], 
+            "stopAtEntry": false,
+            "cwd"    : "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+    ]
+}

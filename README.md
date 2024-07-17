@@ -39,4 +39,4 @@ The repository consists of:
 
 # Acknowlegments 
 
-We sincerely thank Huawei for contribution to this Open Source project. Guys, you are the best!
+We sincerely thank Huawei Moscow Graphics Team for contribution to this Open Source project. Guys, you are the best!

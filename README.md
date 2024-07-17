@@ -34,7 +34,7 @@ The repository consists of:
 4. Add check for you class name inside 'CreateRender' function in RenderFactory.cpp;
 5. You are done!
 
-### Scenes and shaders
+### Scenes
 * TBD
 
 # Acknowlegments 

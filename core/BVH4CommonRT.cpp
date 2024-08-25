@@ -46,10 +46,17 @@ void BVH4CommonRT::IntersectAllPrimitivesInLeaf(const float3 ray_pos, const floa
   }
 }
 
-void BVH4CommonRT::BVH4Traverse(const float3 ray_pos, const float3 ray_dir, float tNear, uint32_t instId, uint32_t geomId, uint32_t stack[STACK_SIZE],
-                                bool stopOnFirstHit, CRT_Hit* pHit)
-
+void BVH4CommonRT::BVH4Traverse(const float3 ray_pos, const float3 ray_dir, float tNear, uint32_t instId, uint32_t geomId, bool stopOnFirstHit, CRT_Hit* pHit)
 {
+  struct PairIF
+  {
+    PairIF(){}
+    PairIF(uint32_t a_o, float a_t) : o(a_o), t(a_t) {}
+    uint32_t o;
+    float    t;
+  };
+
+  PairIF stack[STACK_SIZE];
   const uint32_t bvhOffset = m_bvhOffsets[geomId];
 
   int top                  = 0;
@@ -164,7 +171,8 @@ void BVH4CommonRT::BVH4Traverse(const float3 ray_pos, const float3 ray_dir, floa
         m_stats.SOC++;
         m_stats.SBL+=sizeof(uint32_t); 
         #endif
-        stack[top] = children.w;
+        stack[top].o = children.w;
+        stack[top].t = hitMinD.w;
         top++;
       }
 
@@ -174,7 +182,8 @@ void BVH4CommonRT::BVH4Traverse(const float3 ray_pos, const float3 ray_dir, floa
         m_stats.SOC++;
         m_stats.SBL+=sizeof(uint32_t); 
         #endif
-        stack[top] = children.z;
+        stack[top].o = children.z;
+        stack[top].t = hitMinD.z;
         top++;
       }
 
@@ -184,7 +193,8 @@ void BVH4CommonRT::BVH4Traverse(const float3 ray_pos, const float3 ray_dir, floa
         m_stats.SOC++;
         m_stats.SBL+=sizeof(uint32_t); 
         #endif
-        stack[top] = children.y;
+        stack[top].o = children.y;
+        stack[top].t = hitMinD.y;
         top++;
       }
 
@@ -219,11 +229,13 @@ void BVH4CommonRT::BVH4Traverse(const float3 ray_pos, const float3 ray_dir, floa
 
     // pop next node from stack
     //
-    if(needStackPop)
+    while(needStackPop)
     {
       top--;                                                  
-      leftNodeOffset = stack[std::max(top,0)];    
+      leftNodeOffset = stack[std::max(top,0)].o;
+      needStackPop   = (top > 0) && (stack[std::max(top,0)].t > pHit->t);
     }
+
     #ifdef ENABLE_METRICS
     m_stats.SOC++;
     m_stats.SBL+=sizeof(uint32_t);
@@ -252,7 +264,6 @@ CRT_Hit BVH4CommonRT::RayQuery_NearestHit(float4 posAndNear, float4 dirAndFar)
 
   const float3 rayDirInv = SafeInverse(to_float3(dirAndFar));
 
-  uint32_t stack[STACK_SIZE];
   uint32_t nodeIdx = 0;
   do
   {
@@ -285,7 +296,7 @@ CRT_Hit BVH4CommonRT::RayQuery_NearestHit(float4 posAndNear, float4 dirAndFar)
       const float3 ray_pos = matmul4x3(m_instMatricesInv[instId], to_float3(posAndNear));
       const float3 ray_dir = matmul3x3(m_instMatricesInv[instId], to_float3(dirAndFar)); // DON'T NORMALIZE IT !!!! When we transform to local space of node, ray_dir must be unnormalized!!!
   
-      BVH4Traverse(ray_pos, ray_dir, posAndNear.w, instId, geomId, stack, stopOnFirstHit, &hit);
+      BVH4Traverse(ray_pos, ray_dir, posAndNear.w, instId, geomId, stopOnFirstHit, &hit);
     }
 
   } while (nodeIdx < 0xFFFFFFFE && !(stopOnFirstHit && hit.primId != uint32_t(-1)));

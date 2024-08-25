@@ -13,7 +13,7 @@
             "program": "${workspaceFolder}/render_app",
             "args"   : ["-mesh", "scenes/meshes/helix_mid.vsgf", 
                         //"-render", "ao", "-aoraylen", "0.1", "-aoraynum", "4", "-width", "512", "-height", "512",
-                        "-accel", "BVH2Common", "-build", "cbvh_embree2", "-layout", "DepthFirst", "-out", "y00_helix_cpu.bmp"], 
+                        "-accel", "BVH2Common", "-build", "cbvh_embree2", "-layout", "DepthFirst", "-out", "y01_helix_cpu.bmp"], 
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
@@ -30,12 +30,12 @@
 
 
         {
-            "name"   : "Dragon(BVH2_STAS_СPU)",
+            "name"   : "Dragon(BVH4_32)",
             "type"   : "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/render_app",
             "args"   : ["-scene", "scenes/03_dragon/dragon.xml", 
-                        "-accel", "BVH2CommonRTStacklessLBVH", "-build", "cbvh_embree2", "-gpu", "0", "-out", "y03_dragon_cpu.bmp"], 
+                        "-accel", "BVH4_32", "-build", "cbvh_embree2", "-gpu", "0", "-out", "y02_dragon_cpu.bmp"], 
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],
@@ -56,7 +56,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/render_app",
             "args"   : ["-scene", "scenes/01_simple_scenes/instanced_objects.xml", //"-width", "512", "-height", "512",
-                        "-accel", "BVH2Common", "-build", "cbvh_lbvh", "-layout", "DepthFirst", "-out", "y04_ints_objs1.bmp"], 
+                        "-accel", "BVH2Common", "-build", "cbvh_lbvh", "-layout", "DepthFirst", "-out", "y03_ints_objs1.bmp"], 
             "stopAtEntry": false,
             "cwd"    : "${workspaceFolder}",
             "environment": [],

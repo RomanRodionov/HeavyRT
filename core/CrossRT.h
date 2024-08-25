@@ -26,9 +26,9 @@ struct CRT_Hit
   float    coords[4]; ///< custom intersection data; for triangles coords[0] and coords[1] stores baricentric coords (u,v)
 };
 
-#define REMAP_PRIM_ID
+//#define REMAP_PRIM_ID
 
-//#define ENABLE_METRICS
+#define ENABLE_METRICS
 constexpr int TREELET_ARR_SIZE = 5;
 constexpr int treelet_sizes[TREELET_ARR_SIZE] = { 128, 512, 4096, 16384, 131072 };
 

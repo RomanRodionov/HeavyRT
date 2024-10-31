@@ -12,100 +12,100 @@ include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_warnings)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-    link_directories(${CMAKE_SOURCE_DIR}/external/embree/lib_win64)
+    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/embree/lib_win64)
     set(RAYTRACING_EMBREE_LIBS embree3)
 else()
     find_package(Threads REQUIRED)
-    link_directories(${CMAKE_SOURCE_DIR}/external/embree/lib)
+    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/embree/lib)
     set(RAYTRACING_EMBREE_LIBS embree3 embree_sse42 embree_avx embree_avx2 lexers simd sys tasking) # embree_avx embree_avx2
 endif()
 
-include_directories(${CMAKE_SOURCE_DIR}/external)
-include_directories(${CMAKE_SOURCE_DIR}/external/embree)
-include_directories(${CMAKE_SOURCE_DIR}/external/nanort)
-include_directories(${CMAKE_SOURCE_DIR}/external/tiny_gltf)
-include_directories(${CMAKE_SOURCE_DIR}/core)
-include_directories(${CMAKE_SOURCE_DIR}/core/common)
-include_directories(${CMAKE_SOURCE_DIR}/core/builders)
-include_directories(${CMAKE_SOURCE_DIR}/examples)
-include_directories(${CMAKE_SOURCE_DIR}/examples/loader)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/embree)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/nanort)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/tiny_gltf)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/core)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/core/common)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/core/builders)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/examples)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/examples/loader)
 
 
 find_package(OpenMP)
 
 set(SCENE_LOADER_SRC
-        ${CMAKE_SOURCE_DIR}/examples/loader/pugixml.cpp
-        ${CMAKE_SOURCE_DIR}/examples/loader/hydraxml.cpp
-        ${CMAKE_SOURCE_DIR}/examples/loader/cmesh.cpp
-        ${CMAKE_SOURCE_DIR}/examples/loader/gltf_loader.cpp
-        ${CMAKE_SOURCE_DIR}/examples/loader/gltf_loader_def.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/loader/pugixml.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/loader/hydraxml.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/loader/cmesh.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/loader/gltf_loader.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/loader/gltf_loader_def.cpp)
 
 
 set(CORE_SRC
-        ${CMAKE_SOURCE_DIR}/core/common/Image2d.cpp
-        ${CMAKE_SOURCE_DIR}/core/common/Timer.cpp
-        ${CMAKE_SOURCE_DIR}/core/common/qmc_sobol_niederreiter.cpp
-        ${CMAKE_SOURCE_DIR}/core/FactoryRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/EmbreeRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BruteForceRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonLoftRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonLoftRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonLoft16RT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonLoft16RT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonLRFT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonLRFT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonRTStacklessLBVH_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2CommonRTStacklessLBVH.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH4CommonRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH4CommonRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH4HalfRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH4HalfRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2Stackless.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2Stackless_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2FatRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2FatRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2Fat16RT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2Fat16RT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2FatCompactRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/BVH2FatCompactRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/NanoRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/NonunifNodeStorage.cpp
-        ${CMAKE_SOURCE_DIR}/core/ShtRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/ShtRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/ShtRT64.cpp
-        ${CMAKE_SOURCE_DIR}/core/ShtRT64_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/Sht4NodesRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/Sht4NodesRT_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/Sht4NodesHalfRT.cpp
-        ${CMAKE_SOURCE_DIR}/core/Sht4NodesHalfRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/common/Image2d.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/common/Timer.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/common/qmc_sobol_niederreiter.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/FactoryRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/EmbreeRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BruteForceRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonLoftRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonLoftRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonLoft16RT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonLoft16RT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonLRFT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonLRFT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonRTStacklessLBVH_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2CommonRTStacklessLBVH.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH4CommonRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH4CommonRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH4HalfRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH4HalfRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2Stackless.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2Stackless_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2FatRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2FatRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2Fat16RT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2Fat16RT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2FatCompactRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/BVH2FatCompactRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/NanoRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/NonunifNodeStorage.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/ShtRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/ShtRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/ShtRT64.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/ShtRT64_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/Sht4NodesRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/Sht4NodesRT_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/Sht4NodesHalfRT.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/Sht4NodesHalfRT_host.cpp
         )
 
 set(EXAMPLES_SRC
-        ${CMAKE_SOURCE_DIR}/examples/01_eye_rays/eye_ray.cpp
-        ${CMAKE_SOURCE_DIR}/examples/01_eye_rays/eye_ray_host.cpp
-        ${CMAKE_SOURCE_DIR}/examples/02_rtao/rtao.cpp
-        ${CMAKE_SOURCE_DIR}/examples/02_rtao/rtao_host.cpp
-        ${CMAKE_SOURCE_DIR}/examples/RenderFactory.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/01_eye_rays/eye_ray.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/01_eye_rays/eye_ray_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/02_rtao/rtao.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/02_rtao/rtao_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/examples/RenderFactory.cpp
         )
 
 set(BUILDERS_SRC
-        ${CMAKE_SOURCE_DIR}/core/builders/lbvh.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/lbvh_host.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh_fat.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh_core.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh_embree2.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh_split.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/EXT_TriBoxOverlap.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh_esc.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh_esc2.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/cbvh_hlbvh.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/FatBVHReorder.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/FatBVHClusterize.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/FatBVHPrint.cpp
-        ${CMAKE_SOURCE_DIR}/core/builders/refitter.cpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/lbvh.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/lbvh_host.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh_fat.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh_core.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh_embree2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh_split.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/EXT_TriBoxOverlap.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh_esc.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh_esc2.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/cbvh_hlbvh.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/FatBVHReorder.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/FatBVHClusterize.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/FatBVHPrint.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/builders/refitter.cpp)
 
 
 message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")

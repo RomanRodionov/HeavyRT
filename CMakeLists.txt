@@ -7,28 +7,39 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 project(loader_app CXX)
 add_compile_definitions(HALFFLOAT)
 
+
+
 add_library(project_warnings INTERFACE)
 include(cmake/CompilerWarnings.cmake)
 set_project_warnings(project_warnings)
+
+add_library(HeavyRT)
+add_executable(render_app)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
     link_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/embree/lib_win64)
     set(RAYTRACING_EMBREE_LIBS embree3)
 else()
     find_package(Threads REQUIRED)
-    link_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/embree/lib)
+    target_link_directories(HeavyRT PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/external/embree/lib)
+    target_link_directories(render_app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external/embree/lib)
     set(RAYTRACING_EMBREE_LIBS embree3 embree_sse42 embree_avx embree_avx2 lexers simd sys tasking) # embree_avx embree_avx2
 endif()
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/embree)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/nanort)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/tiny_gltf)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/core)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/core/common)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/core/builders)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/examples)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/examples/loader)
+
+set(HeavyRT_LIB_INCLUDES 
+        external
+        external/embree
+        external/nanort
+        external/tiny_gltf
+        examples)
+
+target_include_directories(HeavyRT PUBLIC ${HeavyRT_LIB_INCLUDES})
+target_include_directories(HeavyRT PUBLIC core)
+target_include_directories(HeavyRT PUBLIC core/common)
+target_include_directories(HeavyRT PUBLIC core/builders)
+target_include_directories(render_app PRIVATE ${HeavyRT_LIB_INCLUDES})
+target_include_directories(render_app PRIVATE examples/loader)
 
 
 find_package(OpenMP)
@@ -118,27 +129,39 @@ else()
   add_definitions(-DNDEBUG)
 endif()
 
-add_executable(render_app)
+#add_library(HeavyRT)
+target_compile_features(HeavyRT PUBLIC cxx_std_17)
+target_compile_features(render_app PUBLIC cxx_std_17)
+
+target_sources(HeavyRT PRIVATE
+           ${CORE_SRC}
+           ${EXAMPLES_SRC}
+           ${BUILDERS_SRC}
+           )
 
 target_sources(render_app PRIVATE main.cpp
-           ${SCENE_LOADER_SRC}
-           ${CORE_SRC}
-           ${EXAMPLES_SRC} ${BUILDERS_SRC})
+                ${SCENE_LOADER_SRC}
+)
 
-set_property(TARGET render_app PROPERTY CXX_STANDARD 17)
+target_link_libraries(render_app PRIVATE HeavyRT)
+
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+    set_target_properties(HeavyRT PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
     set_target_properties(render_app PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
+    target_link_libraries(HeavyRT PRIVATE project_warnings ${RAYTRACING_EMBREE_LIBS})
     target_link_libraries(render_app PRIVATE project_warnings ${RAYTRACING_EMBREE_LIBS})
 
     add_custom_command(TARGET render_app POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/external/embree/bin_win64" $<TARGET_FILE_DIR:render_app>)
 else()
     target_link_libraries(render_app PRIVATE project_warnings Threads::Threads dl ${RAYTRACING_EMBREE_LIBS})
+    target_link_libraries(HeavyRT PRIVATE project_warnings Threads::Threads dl ${RAYTRACING_EMBREE_LIBS})
 endif()
 
 if(OpenMP_CXX_FOUND)
+  target_link_libraries(HeavyRT PUBLIC OpenMP::OpenMP_CXX)
   target_link_libraries(render_app PUBLIC OpenMP::OpenMP_CXX) ##
 endif()
 

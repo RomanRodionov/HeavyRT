@@ -31,7 +31,7 @@ int main(int argc, const char** argv)
   uint32_t WIDTH  = 2048;
   uint32_t HEIGHT = 2048;
   
-  const char* scenePath   = "../scenes/11_audi_a8_opt/audi_a8_opt.xml"; // bunny_cornell.xml, instanced_objects.xml
+  const char* scenePath   = "scenes/bunny_cornell.xml"; // bunny_cornell.xml, instanced_objects.xml
   const char* meshPath    = "scenes/meshes/bunny.vsgf";///helix_mid.vsgf";
   const char* renderName  = "libexample"; // "RT", "RTAO" or just "AO"
 

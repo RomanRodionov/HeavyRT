@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+scenes/*
+render_app

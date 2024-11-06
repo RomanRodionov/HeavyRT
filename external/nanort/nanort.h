@@ -98,6 +98,10 @@ typedef enum {
 #if __has_warning("-Wzero-as-null-pointer-constant")
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
+
+#if __has_warning("-Wunsafe-buffer-usage")
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
 #endif
 
 // ----------------------------------------------------------------------------
@@ -130,7 +134,7 @@ typedef enum {
 template <typename T, size_t stack_capacity>
 class StackAllocator : public std::allocator<T> {
  public:
-  typedef typename std::allocator<T>::pointer pointer;
+  typedef T* pointer;
   typedef typename std::allocator<T>::size_type size_type;
 
   // Backing store for the allocator. The container owner is responsible for
@@ -198,7 +202,11 @@ class StackAllocator : public std::allocator<T> {
       source_->used_stack_buffer_ = true;
       return source_->stack_buffer();
     } else {
+#if __cplusplus >= 201703L
+      return std::allocator_traits<std::allocator<T>>::allocate(*this, n, hint);
+#else
       return std::allocator<T>::allocate(n, hint);
+#endif
     }
   }
 
@@ -525,19 +533,11 @@ class BVHNode {
 
   ~BVHNode() {}
 
-  /// 3 areas of node walls
-  real3<double> Areas() const
-  {
-    return real3<double>(double((bmax[0] - bmin[0]) * (bmax[1] - bmin[1])),
-                         double((bmax[1] - bmin[1]) * (bmax[2] - bmin[2])),
-                         double((bmax[0] - bmin[0]) * (bmax[2] - bmin[2])));
-  }
+  T bmin[3];
+  T bmax[3];
 
-  T bmin[3] = {0,0,0};
-  T bmax[3] = {0,0,0};
-
-  int flag = 0;  // 1 = leaf node, 0 = branch node
-  int axis = 0;
+  int flag;  // 1 = leaf node, 0 = branch node
+  int axis;
 
   // leaf
   //   data[0] = npoints
@@ -546,7 +546,7 @@ class BVHNode {
   // branch
   //   data[0] = child[0]
   //   data[1] = child[1]
-  unsigned int data[2] = {0,0};
+  unsigned int data[2];
 };
 
 template <class H>
@@ -831,8 +831,7 @@ class BVHAccel {
                          std::vector<BVHNode<T> > *out_nodes,
                          unsigned int left_idx, unsigned int right_idx,
                          unsigned int depth, const P &p, const Pred &pred);
-
-  protected:
+protected:
   template <class I>
   bool TestLeafNode(const BVHNode<T> &node, const Ray<T> &ray,
                     const I &intersector) const;
@@ -880,16 +879,6 @@ class TriangleSAHPred {
         faces_(rhs.faces_),
         vertex_stride_bytes_(rhs.vertex_stride_bytes_) {}
 
-  TriangleSAHPred<T> &operator=(const TriangleSAHPred<T> &rhs) {
-    axis_ = rhs.axis_;
-    pos_ = rhs.pos_;
-    vertices_ = rhs.vertices_;
-    faces_ = rhs.faces_;
-    vertex_stride_bytes_ = rhs.vertex_stride_bytes_;
-
-    return (*this);
-  }
-
   void Set(int axis, T pos) const {
     axis_ = axis;
     pos_ = pos;
@@ -908,7 +897,6 @@ class TriangleSAHPred {
     real3<T> p2(get_vertex_addr<T>(vertices_, i2, vertex_stride_bytes_));
 
     T center = p0[axis] + p1[axis] + p2[axis];
-
     return (center < pos * static_cast<T>(3.0));
   }
 
@@ -955,6 +943,21 @@ class TriangleMesh {
         (*bmax)[k] = std::max((*bmax)[k], coord);
       }
     }
+  }
+
+  void BoundingBoxAndCenter(real3<T>* bmin, real3<T>* bmax, real3<T>* center, unsigned int prim_index) const {
+    unsigned int i0 = faces_[3 * prim_index + 0];
+    unsigned int i1 = faces_[3 * prim_index + 1];
+    unsigned int i2 = faces_[3 * prim_index + 2];
+
+    real3<T> p0(get_vertex_addr<T>(vertices_, i0, vertex_stride_bytes_));
+    real3<T> p1(get_vertex_addr<T>(vertices_, i1, vertex_stride_bytes_));
+    real3<T> p2(get_vertex_addr<T>(vertices_, i2, vertex_stride_bytes_));
+    for (int k = 0; k < 3; ++k) {
+      (*bmin)[k] = std::min(p0[k], std::min(p1[k], p2[k]));
+      (*bmax)[k] = std::max(p0[k], std::max(p1[k], p2[k]));
+    }
+    *center = (p0 + p1 + p2) * (T(1) / T(3));
   }
 
   const T *vertices_;
@@ -1232,16 +1235,32 @@ const T &safemax(const T &a, const T &b) {
 //
 // SAH functions
 //
+template <typename T>
+struct Bin {
+  BBox<T> bbox;
+  size_t  count;
+  T cost;
+
+  Bin()
+    : count(0), cost(0)
+  {
+    // Note: bbox is initialized to be empty
+  }
+};
+
+template <typename T>
 struct BinBuffer {
   explicit BinBuffer(unsigned int size) {
     bin_size = size;
-    bin.resize(2 * 3 * size);
+    bin.resize(3 * size);
     clear();
   }
 
-  void clear() { memset(&bin[0], 0, sizeof(size_t) * 2 * 3 * bin_size); }
+  void clear() {
+    std::fill(bin.begin(), bin.end(), Bin<T>());
+  }
 
-  std::vector<size_t> bin;  // (min, max) * xyz * binsize
+  std::vector<Bin<T> > bin;
   unsigned int bin_size;
   unsigned int pad0;
 };
@@ -1283,7 +1302,7 @@ inline void GetBoundingBoxOfTriangle(real3<T> *bmin, real3<T> *bmax,
 }
 
 template <typename T, class P>
-inline void ContributeBinBuffer(BinBuffer *bins,  // [out]
+inline void ContributeBinBuffer(BinBuffer<T> *bins,  // [out]
                                 const real3<T> &scene_min,
                                 const real3<T> &scene_max,
                                 unsigned int *indices, unsigned int left_idx,
@@ -1304,49 +1323,35 @@ inline void ContributeBinBuffer(BinBuffer *bins,  // [out]
     }
   }
 
-  // Clear bin data
-  std::fill(bins->bin.begin(), bins->bin.end(), 0);
-  // memset(&bins->bin[0], 0, sizeof(2 * 3 * bins->bin_size));
-
-  size_t idx_bmin[3];
-  size_t idx_bmax[3];
+  bins->clear();
 
   for (size_t i = left_idx; i < right_idx; i++) {
     //
-    // Quantize the position into [0, BIN_SIZE)
+    // Quantize the center position into [0, BIN_SIZE)
     //
     // q[i] = (int)(p[i] - scene_bmin) / scene_size
     //
-    real3<T> bmin;
-    real3<T> bmax;
 
-    p.BoundingBox(&bmin, &bmax, indices[i]);
-    // GetBoundingBoxOfTriangle(&bmin, &bmax, vertices, faces, indices[i]);
+    real3<T> bmin, bmax, center;
+    p.BoundingBoxAndCenter(&bmin, &bmax, &center, indices[i]);
+    real3<T> quantized_center = (center - scene_min) * scene_inv_size;
 
-    real3<T> quantized_bmin = (bmin - scene_min) * scene_inv_size;
-    real3<T> quantized_bmax = (bmax - scene_min) * scene_inv_size;
-
-    // idx is now in [0, BIN_SIZE)
     for (int j = 0; j < 3; ++j) {
-      int q0 = static_cast<int>(quantized_bmin[j]);
-      if (q0 < 0) q0 = 0;
-      int q1 = static_cast<int>(quantized_bmax[j]);
-      if (q1 < 0) q1 = 0;
+      // idx is now in [0, BIN_SIZE)
+      unsigned idx = std::min(bins->bin_size - 1, unsigned(std::max(0, int(quantized_center[j]))));
 
-      idx_bmin[j] = static_cast<unsigned int>(q0);
-      idx_bmax[j] = static_cast<unsigned int>(q1);
+      // Increment bin counter + extend bounding box of bin
+      unsigned int bin_idx = static_cast<unsigned int >(j) * bins->bin_size + idx;
 
-      if (idx_bmin[j] >= bin_size)
-        idx_bmin[j] = static_cast<unsigned int>(bin_size) - 1;
-
-      if (idx_bmax[j] >= bin_size)
-        idx_bmax[j] = static_cast<unsigned int>(bin_size) - 1;
-
-      // Increment bin counter
-      bins->bin[0 * (bins->bin_size * 3) +
-                static_cast<size_t>(j) * bins->bin_size + idx_bmin[j]] += 1;
-      bins->bin[1 * (bins->bin_size * 3) +
-                static_cast<size_t>(j) * bins->bin_size + idx_bmax[j]] += 1;
+      // TODO: assert when out-of-bounds access?.
+      if (bin_idx < bins->bin_size) {
+        Bin<T>& bin = bins->bin[static_cast<unsigned int>(j) * bins->bin_size + idx];
+        bin.count++;
+        for (int k = 0; k < 3; ++k) {
+          bin.bbox.bmin[k] = std::min(bin.bbox.bmin[k], bmin[k]);
+          bin.bbox.bmax[k] = std::max(bin.bbox.bmax[k], bmax[k]);
+        }
+      }
     }
   }
 }
@@ -1366,105 +1371,50 @@ inline T SAH(size_t ns1, T leftArea, size_t ns2, T rightArea, T invS, T Taabb,
 template <typename T>
 inline bool FindCutFromBinBuffer(T *cut_pos,        // [out] xyz
                                  int *minCostAxis,  // [out]
-                                 const BinBuffer *bins, const real3<T> &bmin,
-                                 const real3<T> &bmax, size_t num_primitives,
-                                 T costTaabb) {      // should be in [0.0, 1.0]
-  const T kEPS = std::numeric_limits<T>::epsilon();  // * epsScale;
-
-  size_t left, right;
-  real3<T> bsize, bstep;
-  real3<T> bminLeft, bmaxLeft;
-  real3<T> bminRight, bmaxRight;
-  T saLeft, saRight, saTotal;
-  T pos;
+                                 BinBuffer<T> *bins, const real3<T> &bmin,
+                                 const real3<T> &bmax) {
   T minCost[3];
-
-  T costTtri = static_cast<T>(1.0) - costTaabb;
-
-  (*minCostAxis) = 0;
-
-  bsize = bmax - bmin;
-  bstep = bsize * (static_cast<T>(1.0) / bins->bin_size);
-  saTotal = CalculateSurfaceArea(bmin, bmax);
-
-  T invSaTotal = static_cast<T>(0.0);
-  if (saTotal > kEPS) {
-    invSaTotal = static_cast<T>(1.0) / saTotal;
-  }
-
   for (int j = 0; j < 3; ++j) {
-    //
-    // Compute SAH cost for the right side of each cell of the bbox.
-    // Exclude both extreme sides of the bbox.
-    //
-    //  i:      0    1    2    3
-    //     +----+----+----+----+----+
-    //     |    |    |    |    |    |
-    //     +----+----+----+----+----+
-    //
-
-    T minCostPos = bmin[j] + static_cast<T>(1.0) * bstep[j];
     minCost[j] = std::numeric_limits<T>::max();
 
-    left = 0;
-    right = num_primitives;
-    bminLeft = bminRight = bmin;
-    bmaxLeft = bmaxRight = bmax;
-
-    for (int i = 0; i < static_cast<int>(bins->bin_size) - 1; ++i) {
-      left += bins->bin[0 * (3 * bins->bin_size) +
-                        static_cast<size_t>(j) * bins->bin_size +
-                        static_cast<size_t>(i)];
-      right -= bins->bin[1 * (3 * bins->bin_size) +
-                         static_cast<size_t>(j) * bins->bin_size +
-                         static_cast<size_t>(i)];
-
-      assert(left <= num_primitives);
-      assert(right <= num_primitives);
-
-      //
-      // Split pos bmin + (i + 1) * (bsize / BIN_SIZE)
-      // +1 for i since we want a position on right side of the cell.
-      //
-
-      pos = bmin[j] + (i + static_cast<T>(1.0)) * bstep[j];
-      bmaxLeft[j] = pos;
-      bminRight[j] = pos;
-
-      saLeft = CalculateSurfaceArea(bminLeft, bmaxLeft);
-      saRight = CalculateSurfaceArea(bminRight, bmaxRight);
-
-      T cost =
-          SAH(left, saLeft, right, saRight, invSaTotal, costTaabb, costTtri);
-
-      if (cost < minCost[j]) {
-        //
-        // Update the min cost
-        //
-        minCost[j] = cost;
-        minCostPos = pos;
-        // minCostAxis = j;
+    // Sweep left to accumulate bounding boxes and compute the right-hand side of the cost
+    size_t count = 0;
+    BBox<T> accumulated_bbox;
+    for (size_t i = bins->bin_size - 1; i > 0; --i) {
+      Bin<T>& bin = bins->bin[static_cast<unsigned int>(j) * bins->bin_size + i];
+      for (int k = 0; k < 3; ++k) {
+        accumulated_bbox.bmin[k] = std::min(bin.bbox.bmin[k], accumulated_bbox.bmin[k]);
+        accumulated_bbox.bmax[k] = std::max(bin.bbox.bmax[k], accumulated_bbox.bmax[k]);
       }
+      count += bin.count;
+      bin.cost = T(count) * CalculateSurfaceArea(accumulated_bbox.bmin, accumulated_bbox.bmax);
     }
 
-    cut_pos[j] = minCostPos;
+    // Sweep right to compute the full cost
+    count = 0;
+    accumulated_bbox = BBox<T>();
+    size_t minBin = 1;
+    for (size_t i = 0; i < bins->bin_size - 1; i++) {
+      Bin<T>& bin = bins->bin[static_cast<unsigned int>(j) * bins->bin_size + i];
+      Bin<T>& next_bin = bins->bin[static_cast<unsigned int>(j) * bins->bin_size + i + 1];
+      for (int k = 0; k < 3; ++k) {
+        accumulated_bbox.bmin[k] = std::min(bin.bbox.bmin[k], accumulated_bbox.bmin[k]);
+        accumulated_bbox.bmax[k] = std::max(bin.bbox.bmax[k], accumulated_bbox.bmax[k]);
+      }
+      count += bin.count;
+      // Traversal cost and intersection cost are irrelevant for minimization
+      T cost = T(count) * CalculateSurfaceArea(accumulated_bbox.bmin, accumulated_bbox.bmax) + next_bin.cost;
+      if (cost < minCost[j]) {
+        minCost[j] = cost;
+        // Store the beginning of the right partition
+        minBin = i + 1;
+      }
+    }
+    cut_pos[j] = T(minBin) * ((bmax[j] - bmin[j]) / T(bins->bin_size)) + bmin[j];
   }
-
-  // cut_axis = minCostAxis;
-  // cut_pos = minCostPos;
-
-  // Find min cost axis
-  T cost = minCost[0];
-  (*minCostAxis) = 0;
-
-  if (cost > minCost[1]) {
-    (*minCostAxis) = 1;
-    cost = minCost[1];
-  }
-  if (cost > minCost[2]) {
-    (*minCostAxis) = 2;
-    cost = minCost[2];
-  }
+  *minCostAxis = 0;
+  if (minCost[0] > minCost[1]) *minCostAxis = 1;
+  if (minCost[*minCostAxis] > minCost[2]) *minCostAxis = 2;
 
   return true;
 }
@@ -1721,11 +1671,10 @@ unsigned int BVHAccel<T>::BuildShallowTree(std::vector<BVHNode<T> > *out_nodes,
     int min_cut_axis = 0;
     T cut_pos[3] = {0.0, 0.0, 0.0};
 
-    BinBuffer bins(options_.bin_size);
+    BinBuffer<T> bins(options_.bin_size);
     ContributeBinBuffer(&bins, bmin, bmax, &indices_.at(0), left_idx, right_idx,
                         p);
-    FindCutFromBinBuffer(cut_pos, &min_cut_axis, &bins, bmin, bmax, n,
-                         options_.cost_t_aabb);
+    FindCutFromBinBuffer(cut_pos, &min_cut_axis, &bins, bmin, bmax);
 
     // Try all 3 axis until good cut position avaiable.
     unsigned int mid_idx = left_idx;
@@ -1856,11 +1805,10 @@ unsigned int BVHAccel<T>::BuildTree(BVHBuildStatistics *out_stat,
   int min_cut_axis = 0;
   T cut_pos[3] = {0.0, 0.0, 0.0};
 
-  BinBuffer bins(options_.bin_size);
+  BinBuffer<T> bins(options_.bin_size);
   ContributeBinBuffer(&bins, bmin, bmax, &indices_.at(0), left_idx, right_idx,
                       p);
-  FindCutFromBinBuffer(cut_pos, &min_cut_axis, &bins, bmin, bmax, n,
-                       options_.cost_t_aabb);
+  FindCutFromBinBuffer(cut_pos, &min_cut_axis, &bins, bmin, bmax);
 
   // Try all 3 axis until good cut position avaiable.
   unsigned int mid_idx = left_idx;

@@ -7,7 +7,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 project(loader_app CXX)
 add_compile_definitions(HALFFLOAT)
 
-
+add_subdirectory(external/LiteMath)
 
 add_library(project_warnings INTERFACE)
 include(cmake/CompilerWarnings.cmake)
@@ -142,7 +142,7 @@ target_sources(HeavyRT PRIVATE
 target_sources(render_app PRIVATE main.cpp
                 ${SCENE_LOADER_SRC}
 )
-
+target_link_libraries(HeavyRT PUBLIC LiteMath)
 target_link_libraries(render_app PRIVATE HeavyRT)
 
 

@@ -1,0 +1,3 @@
+[submodule "external/LiteMath"]
+	path = external/LiteMath
+	url = https://github.com/msu-graphics-group/LiteMath.git
